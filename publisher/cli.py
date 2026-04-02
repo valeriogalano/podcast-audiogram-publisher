@@ -201,6 +201,10 @@ def main(argv=None):
         sys.exit(exit_code)
 
     # ---------------------------------------------------------------- manual mode
+    state_path = Path(args.state_file or config.get("state_file", "./published.json"))
+    state = PublishState(state_path)
+    output_dir = Path(config.get("input_dir", "./output")).resolve()
+
     try:
         all_assets = detect_assets(args.input)
     except (FileNotFoundError, NotADirectoryError) as exc:
@@ -212,7 +216,12 @@ def main(argv=None):
     exit_code = 0
     for assets in all_assets:
         logger.info("--- Processing: %s ---", assets.folder)
-        exit_code |= _publish_assets(assets, platform_names, config, logger, args.dry_run)
+        try:
+            key = soundbite_key(output_dir, assets)
+        except ValueError:
+            key = None
+            logger.debug("Soundbite %s is outside input_dir; state will not be tracked.", assets.folder)
+        exit_code |= _publish_assets(assets, platform_names, config, logger, args.dry_run, state=state, key=key)
 
     sys.exit(exit_code)
 
