@@ -80,15 +80,8 @@ def main(argv=None):
         nargs="?",
         help=(
             "Path to a soundbite folder (e.g. output/ep142/sb1/) or episode folder "
-            "(e.g. output/ep142/). Required unless --auto is used."
-        ),
-    )
-    parser.add_argument(
-        "--auto",
-        action="store_true",
-        help=(
-            "Scan the output folder (input_dir in config), pick the most recent "
-            "unpublished soundbite, and publish it. State is tracked in --state-file."
+            "(e.g. output/ep142/). If omitted, the most recent unpublished soundbite "
+            "from input_dir (config) is picked automatically."
         ),
     )
     parser.add_argument(
@@ -148,9 +141,6 @@ def main(argv=None):
     )
     logger = logging.getLogger("publisher")
 
-    if not args.auto and args.input is None:
-        parser.error("INPUT is required unless --auto is used.")
-
     try:
         config = load_config(args.config)
     except FileNotFoundError as exc:
@@ -169,7 +159,7 @@ def main(argv=None):
     output_dir = Path(config.get("input_dir", "./output")).resolve()
 
     # ------------------------------------------------------------------ auto mode
-    if args.auto:
+    if args.input is None:
         try:
             all_soundbites = scan_output_dir(output_dir)
         except NotADirectoryError as exc:

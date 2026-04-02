@@ -40,55 +40,53 @@ folder — both are gitignored by default.
 
 ## Usage
 
+With no arguments the tool picks and publishes the most recent unpublished
+soundbite automatically (see [Auto mode](#auto-mode-cron-friendly) below).
+Pass a path to target a specific soundbite or episode instead.
+
 ```bash
-# Publish one soundbite to all enabled platforms
+# Auto: pick the most recent unpublished soundbite (default behaviour)
+python -m publisher
+
+# Publish a specific soundbite
 python -m publisher output/ep142/sb1/
 
 # Publish all soundbites from an episode
 python -m publisher output/ep142/
 
 # Preview what would be published (no uploads)
+python -m publisher --dry-run
 python -m publisher output/ep142/sb1/ --dry-run
 
 # Target specific platforms only
+python -m publisher --platforms youtube,instagram
 python -m publisher output/ep142/sb1/ --platforms youtube,instagram
 
-# Use a custom config file
-python -m publisher output/ep142/sb1/ --config /path/to/config.yaml
-
-# Verbose output
-python -m publisher output/ep142/sb1/ --log-level DEBUG
-
 # Write logs to file (useful for cron)
-python -m publisher output/ep142/sb1/ --log-file /var/log/publisher/publisher.log
+python -m publisher --log-file /var/log/publisher/publisher.log
 
-# Auto mode: pick the most recent unpublished soundbite and publish it
-python -m publisher --auto
-
-# Auto mode with explicit state file and log
-python -m publisher --auto \
-  --state-file /var/lib/publisher/published.json \
-  --log-file /var/log/publisher/publisher.log
+# Use a custom config or state file
+python -m publisher --config /path/to/config.yaml --state-file /path/to/published.json
 ```
 
 ### Options
 
 | Option | Default | Description |
 |---|---|---|
+| `INPUT` | *(auto)* | Soundbite or episode folder; omit to use auto mode |
 | `--config PATH` | `./config.yaml` | YAML config file |
 | `--platforms LIST` | *(from config)* | Comma-separated list of platforms |
 | `--dry-run` | off | Print what would be published, no uploads |
 | `--log-level LEVEL` | `INFO` | `DEBUG` \| `INFO` \| `WARNING` \| `ERROR` |
 | `--log-file PATH` | *(stderr only)* | Append logs to this file; rotates daily, keeps 7 days |
-| `--auto` | off | Pick the next unpublished soundbite automatically (see below) |
 | `--state-file PATH` | `state_file` in config | JSON file tracking published soundbites |
 
 ---
 
 ## Auto mode (cron-friendly)
 
-`--auto` lets you run the publisher on a schedule without specifying a folder
-manually. On each invocation it:
+When run without a positional argument the tool picks the next unpublished
+soundbite automatically. On each invocation it:
 
 1. Scans the `input_dir` folder (configured in `config.yaml`) for all episodes
    and soundbites.
@@ -102,8 +100,8 @@ The state is tracked **per platform**: if a soundbite was published on YouTube
 but the Instagram upload failed, the next run will retry only Instagram for
 that soundbite before moving on to the next one.
 
-`--dry-run` is compatible with `--auto`: it logs which soundbite *would* be
-published and to which platforms, without uploading or updating the state file.
+`--dry-run` logs which soundbite *would* be published and to which platforms,
+without uploading or updating the state file.
 
 The state file (`published.json` by default, configurable via `state_file` in
 `config.yaml`) is a simple JSON dictionary:
@@ -119,16 +117,14 @@ The state file (`published.json` by default, configurable via `state_file` in
 
 ## Running as a cron job
 
-Use `--auto` together with `--log-file` to run unattended.
-
 ```cron
 0 9 * * * cd /path/to/podcast-audiogram-publisher && \
-  .venv/bin/python -m publisher --auto \
+  .venv/bin/python -m publisher \
   --log-file /var/log/publisher/publisher.log
 ```
 
 Log files rotate automatically at midnight; the last 7 days are kept.
-Make sure both directories exist before the first run:
+Make sure the log directory exists before the first run:
 
 ```bash
 mkdir -p /var/log/publisher
