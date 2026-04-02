@@ -249,8 +249,9 @@ Posts a Story to your personal account or a channel using
    application.
 2. Note the **App api_id** and **App api_hash**.
 3. Fill in `api_id`, `api_hash`, and `session` path in `config.yaml`.
-4. Set `peer` to `"me"` for your personal account or `"@channelname"` for a
-   channel.
+4. Set `peers` to a list of targets — `"me"` for your personal account,
+   `"@channelname"` for a channel, or a numeric ID for a group. The Story is
+   posted to all listed targets in a single run.
 5. On the first run you will be prompted for your phone number and a
    verification code. A `.session` file is saved and reused afterwards.
 

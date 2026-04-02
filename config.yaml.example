@@ -35,6 +35,7 @@ telegram:
   api_id: 0
   api_hash: ""
   session: ./secrets/telegram.session
-  peer: "me"              # "me" for personal account, or "@channelname" for a channel
+  peers:                  # one or more targets: "me", "@channelname", or a numeric group ID
+    - "me"
   period: 86400           # story duration in seconds (86400 = 24h)
   privacy: all            # all | contacts | close_friends
