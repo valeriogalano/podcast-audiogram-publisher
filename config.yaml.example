@@ -1,0 +1,40 @@
+# config.yaml.example — copy to config.yaml and fill in your values
+
+# Path to the audiogram generator output folder
+input_dir: ./output
+
+# JSON file that tracks which soundbites have already been published (used by --auto)
+state_file: ./published.json
+
+youtube:
+  enabled: true
+  client_secrets: ./secrets/youtube_client_secrets.json
+  token: ./secrets/youtube_token.json
+  privacy: private        # private | unlisted | public
+  category_id: 28         # 28 = Science & Technology
+  default_tags:
+    - podcast
+    - shorts
+
+instagram:
+  enabled: false
+  access_token: ""
+  ig_user_id: ""
+  token_expiry: ""        # ISO date YYYY-MM-DD, used to warn before expiry
+
+tiktok:
+  enabled: false
+  client_key: ""
+  client_secret: ""
+  access_token: ""
+  refresh_token: ""
+  privacy_level: SELF_ONLY   # SELF_ONLY | MUTUAL_FOLLOW_FRIENDS | FOLLOWER_OF_CREATOR | PUBLIC_TO_EVERYONE
+
+telegram:
+  enabled: false
+  api_id: 0
+  api_hash: ""
+  session: ./secrets/telegram.session
+  peer: "me"              # "me" for personal account, or "@channelname" for a channel
+  period: 86400           # story duration in seconds (86400 = 24h)
+  privacy: all            # all | contacts | close_friends
