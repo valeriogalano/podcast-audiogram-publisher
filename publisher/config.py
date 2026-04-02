@@ -32,7 +32,7 @@ DEFAULTS = {
         "api_id": 0,
         "api_hash": "",
         "session": "./secrets/telegram.session",
-        "peer": "me",
+        "peers": ["me"],
         "period": 86400,
         "privacy": "all",
     },

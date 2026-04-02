@@ -102,6 +102,9 @@ The state is tracked **per platform**: if a soundbite was published on YouTube
 but the Instagram upload failed, the next run will retry only Instagram for
 that soundbite before moving on to the next one.
 
+`--dry-run` is compatible with `--auto`: it logs which soundbite *would* be
+published and to which platforms, without uploading or updating the state file.
+
 The state file (`published.json` by default, configurable via `state_file` in
 `config.yaml`) is a simple JSON dictionary:
 
@@ -230,7 +233,11 @@ Uses the [Content Posting API](https://developers.tiktok.com/doc/content-posting
 6. Fill in `client_key`, `client_secret`, `access_token`, `refresh_token` in
    `config.yaml`.
 
-The tool refreshes the access token automatically using the refresh token.
+When the access token expires the tool refreshes it automatically using the
+refresh token and saves the new tokens to `token_file`
+(`./secrets/tiktok_token.json` by default). On subsequent runs the token file
+takes precedence over the values in `config.yaml`, so no manual update is
+needed.
 
 **Official docs:**
 - [Content Posting API — Getting Started](https://developers.tiktok.com/doc/content-posting-api-get-started)
@@ -272,6 +279,6 @@ pytest tests/ -v
 
 ## Security notes
 
-- `config.yaml` and `secrets/` are gitignored. Never commit them.
+- `config.yaml`, `secrets/`, and `published.json` are gitignored. Never commit them.
 - `config.yaml.example` contains only placeholder values — it is safe to commit.
 - Access tokens and secrets are never logged, even at `DEBUG` level.

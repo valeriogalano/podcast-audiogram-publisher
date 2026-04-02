@@ -28,6 +28,7 @@ tiktok:
   client_secret: ""
   access_token: ""
   refresh_token: ""
+  token_file: ./secrets/tiktok_token.json   # refreshed tokens are stored here and take precedence over the values above
   privacy_level: SELF_ONLY   # SELF_ONLY | MUTUAL_FOLLOW_FRIENDS | FOLLOWER_OF_CREATOR | PUBLIC_TO_EVERYONE
 
 telegram:

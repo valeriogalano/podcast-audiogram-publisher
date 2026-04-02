@@ -164,12 +164,12 @@ def main(argv=None):
         logger.error("No platforms enabled. Check your config or use --platforms.")
         sys.exit(1)
 
+    state_path = Path(args.state_file or config.get("state_file", "./published.json"))
+    state = PublishState(state_path)
+    output_dir = Path(config.get("input_dir", "./output")).resolve()
+
     # ------------------------------------------------------------------ auto mode
     if args.auto:
-        state_path = Path(args.state_file or config.get("state_file", "./published.json"))
-        state = PublishState(state_path)
-        output_dir = Path(config.get("input_dir", "./output")).resolve()
-
         try:
             all_soundbites = scan_output_dir(output_dir)
         except NotADirectoryError as exc:
@@ -201,10 +201,6 @@ def main(argv=None):
         sys.exit(exit_code)
 
     # ---------------------------------------------------------------- manual mode
-    state_path = Path(args.state_file or config.get("state_file", "./published.json"))
-    state = PublishState(state_path)
-    output_dir = Path(config.get("input_dir", "./output")).resolve()
-
     try:
         all_assets = detect_assets(args.input)
     except (FileNotFoundError, NotADirectoryError) as exc:
