@@ -278,3 +278,16 @@ pytest tests/ -v
 - `config.yaml`, `secrets/`, and `published.json` are gitignored. Never commit them.
 - `config.yaml.example` contains only placeholder values — it is safe to commit.
 - Access tokens and secrets are never logged, even at `DEBUG` level.
+
+---
+
+## Roadmap
+
+Planned platform additions, in priority order:
+
+- **Facebook** — Reels (vertical), video posts (square/horizontal), and Stories
+  (vertical) via Meta Graph API. Shares infrastructure with the existing
+  Instagram integration.
+- **YouTube (standard upload)** — Full-length video uploads using the existing
+  YouTube credentials, targeting the horizontal format produced by the
+  audiogram generator.
