@@ -291,14 +291,3 @@ Planned platform additions, in priority order:
 - **YouTube (standard upload)** — Full-length video uploads using the existing
   YouTube credentials, targeting the horizontal format produced by the
   audiogram generator.
-
----
-
-<div align="center">
-  <p>Realizzato con ❤️ da <strong>Valerio Galano</strong></p>
-  <p>
-    <a href="https://valeriogalano.it/">Sito Web</a> |
-    <a href="https://daredevel.com/">Blog</a> |
-    <a href="https://pensieriincodice.it/">Podcast</a>
-  </p>
-</div>
