@@ -9,3 +9,7 @@ build/
 .venv/
 venv/
 .env
+
+# Claude Code — file locali (non committare)
+CLAUDE.local.md
+.claude/settings.local.json
