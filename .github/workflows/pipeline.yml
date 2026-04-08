@@ -1,35 +1,12 @@
-name: Audiogram Pipeline
+name: Publish Audiogram
 
 on:
   schedule:
-    - cron: '0 10 * * 2'  # martedi alle 10:00 UTC: genera
-    - cron: '0 10 * * 4'  # giovedi alle 10:00 UTC: pubblica
+    - cron: '0 10 * * 4'  # giovedi alle 10:00 UTC
   workflow_dispatch:
-    inputs:
-      job:
-        description: 'Job da eseguire'
-        required: true
-        default: 'both'
-        type: choice
-        options:
-          - generate
-          - publish
-          - both
 
 jobs:
-  generate:
-    if: github.event_name == 'workflow_dispatch' && (github.event.inputs.job == 'generate' || github.event.inputs.job == 'both') || github.event_name == 'schedule' && github.event.schedule == '0 10 * * 2'
-    runs-on: self-hosted
-    timeout-minutes: 120
-
-    steps:
-      - name: Genera audiogram (ultimo episodio)
-        run: |
-          cd $HOME/PycharmProjects/pensieriincodice-audiogram-generator
-          .venv/bin/python -m audiogram_generator --episode last --soundbites all
-
   publish:
-    if: github.event_name == 'workflow_dispatch' && (github.event.inputs.job == 'publish' || github.event.inputs.job == 'both') || github.event_name == 'schedule' && github.event.schedule == '0 10 * * 4'
     runs-on: self-hosted
     timeout-minutes: 60
 
