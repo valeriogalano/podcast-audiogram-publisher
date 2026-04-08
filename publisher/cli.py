@@ -103,6 +103,13 @@ def main(argv=None):
         help="Comma-separated list of platforms to publish to (overrides config)",
     )
     parser.add_argument(
+        "--limit",
+        type=int,
+        default=1,
+        metavar="N",
+        help="Maximum number of audiograms to publish in auto mode (default: 1)",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Print what would be published without uploading",
@@ -170,24 +177,26 @@ def main(argv=None):
             logger.info("No soundbites found in %s.", output_dir)
             sys.exit(0)
 
-        # Find the most recent soundbite not yet published on all enabled platforms
-        target = None
+        # Find unpublished soundbites up to the configured limit
+        targets = []
         for assets in all_soundbites:
+            if len(targets) >= args.limit:
+                break
             key = soundbite_key(output_dir, assets)
             pending = [p for p in platform_names if not state.is_published(p, key)]
             if pending:
-                target = (assets, key, pending)
-                break
+                targets.append((assets, key, pending))
 
-        if target is None:
+        if not targets:
             logger.info("All soundbites have been published. Nothing to do.")
             sys.exit(0)
 
-        assets, key, pending_platforms = target
-        logger.info("Next unpublished soundbite: %s (pending: %s)", key, pending_platforms)
-        exit_code = _publish_assets(
-            assets, pending_platforms, config, logger, args.dry_run, state=state, key=key
-        )
+        exit_code = 0
+        for assets, key, pending_platforms in targets:
+            logger.info("Next unpublished soundbite: %s (pending: %s)", key, pending_platforms)
+            exit_code |= _publish_assets(
+                assets, pending_platforms, config, logger, args.dry_run, state=state, key=key
+            )
         sys.exit(exit_code)
 
     # ---------------------------------------------------------------- manual mode

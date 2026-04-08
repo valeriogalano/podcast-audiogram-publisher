@@ -48,6 +48,9 @@ Pass a path to target a specific soundbite or episode instead.
 # Auto: pick the most recent unpublished soundbite (default behaviour)
 python -m publisher
 
+# Auto: publish up to 3 unpublished soundbites in one run
+python -m publisher --limit 3
+
 # Publish a specific soundbite
 python -m publisher output/ep142/sb1/
 
@@ -76,6 +79,7 @@ python -m publisher --config /path/to/config.yaml --state-file /path/to/publishe
 | `INPUT` | *(auto)* | Soundbite or episode folder; omit to use auto mode |
 | `--config PATH` | `./config.yaml` | YAML config file |
 | `--platforms LIST` | *(from config)* | Comma-separated list of platforms |
+| `--limit N` | `1` | Maximum number of audiograms to publish in auto mode |
 | `--dry-run` | off | Print what would be published, no uploads |
 | `--log-level LEVEL` | `INFO` | `DEBUG` \| `INFO` \| `WARNING` \| `ERROR` |
 | `--log-file PATH` | *(stderr only)* | Append logs to this file; rotates daily, keeps 7 days |
@@ -92,9 +96,9 @@ soundbite automatically. On each invocation it:
    and soundbites.
 2. Orders them **newest episode first**, soundbites within an episode in
    ascending order (`sb1`, `sb2`, …).
-3. Picks the **first soundbite not yet fully published** across all enabled
-   platforms.
-4. Publishes it, then records the result in the state file.
+3. Picks up to **`--limit`** soundbites (default: `1`) not yet fully published
+   across all enabled platforms, starting from the most recent.
+4. Publishes them in order, recording each result in the state file.
 
 The state is tracked **per platform**: if a soundbite was published on YouTube
 but the Instagram upload failed, the next run will retry only Instagram for
