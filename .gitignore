@@ -13,3 +13,6 @@ venv/
 # Claude Code — file locali (non committare)
 CLAUDE.local.md
 .claude/settings.local.json
+
+# GitHub local workflow
+published.json
