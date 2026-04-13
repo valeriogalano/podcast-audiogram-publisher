@@ -12,6 +12,8 @@ from .platforms.youtube import YouTubePlatform
 from .platforms.instagram import InstagramPlatform
 from .platforms.tiktok import TikTokPlatform
 from .platforms.telegram import TelegramPlatform
+from .platforms.mastodon import MastodonPlatform
+from .platforms.linkedin import LinkedInPlatform
 from .state import PublishState
 
 PLATFORM_REGISTRY = {
@@ -19,6 +21,8 @@ PLATFORM_REGISTRY = {
     "instagram": InstagramPlatform,
     "tiktok": TikTokPlatform,
     "telegram": TelegramPlatform,
+    "mastodon": MastodonPlatform,
+    "linkedin": LinkedInPlatform,
 }
 
 

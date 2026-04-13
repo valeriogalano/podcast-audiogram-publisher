@@ -40,3 +40,14 @@ telegram:
     - "me"
   period: 86400           # story duration in seconds (86400 = 24h)
   privacy: all            # all | contacts | close_friends
+
+mastodon:
+  enabled: false
+  instance_url: "https://mastodon.social"  # URL of your Mastodon instance
+  access_token: ""                          # generate at <instance>/settings/applications
+  visibility: public                        # public | unlisted | private | direct
+
+linkedin:
+  enabled: false
+  access_token: ""    # OAuth 2.0 token with scopes: w_member_social, r_liteprofile
+  author: ""          # URN of the poster, e.g. "urn:li:person:XXXXXXXX" or "urn:li:organization:XXXXXXXX"
