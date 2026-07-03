@@ -43,9 +43,10 @@ telegram:
   # Telegram Stories only accept videos up to 60s. Videos longer than this are
   # posted as a normal video message to the peer(s) instead of a story.
   story_max_duration: 60
-  # Media caption limit (non-premium is 1024). Captions longer than this on a
-  # normal video message are truncated on a word boundary with an ellipsis.
-  message_caption_limit: 1024
+  # Anchor text for the clickable episode link in the normal video message
+  # (the message caption is built from the episode title, soundbite title, link
+  # and hashtags — the transcript is left out).
+  link_text: "Listen to the full episode"
 
 mastodon:
   enabled: false

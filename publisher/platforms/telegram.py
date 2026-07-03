@@ -1,4 +1,5 @@
 import asyncio
+import html
 import json
 import logging
 import subprocess
@@ -11,8 +12,8 @@ logger = logging.getLogger(__name__)
 # Telegram Stories only accept videos up to 60 seconds. Longer videos are
 # posted as a normal video message to the peer instead of a story.
 STORY_MAX_DURATION = 60
-# Telegram media caption limit (non-premium). Longer captions are truncated.
-MESSAGE_CAPTION_LIMIT = 1024
+# Anchor text for the clickable episode link in a normal video message.
+DEFAULT_LINK_TEXT = "Listen to the full episode"
 
 _PRIVACY_MAP_LAZY: dict | None = None
 
@@ -43,19 +44,25 @@ def _use_story(duration: float, max_duration: float = STORY_MAX_DURATION) -> boo
     return duration <= max_duration
 
 
-def _truncate_caption(text: str, limit: int = MESSAGE_CAPTION_LIMIT) -> str:
-    """Truncate a caption to fit Telegram's media caption limit.
+def _build_message_caption(caption: Caption, link_text: str = DEFAULT_LINK_TEXT) -> str:
+    """Build a clean HTML caption for a normal Telegram video message.
 
-    Cuts on a word boundary and appends an ellipsis, keeping the result within
-    ``limit`` characters. Returns the text unchanged when it already fits.
+    Composed from the parsed caption fields (title, soundbite title, episode
+    link and hashtags) — the transcript (which only lives in ``caption.body``)
+    is intentionally left out. The episode link is rendered as a clickable
+    anchor. Returns HTML to be sent with ``parse_mode="html"``.
     """
-    if len(text) <= limit:
-        return text
-    truncated = text[:limit - 1].rstrip()
-    space = truncated.rfind(" ")
-    if space > 0:
-        truncated = truncated[:space].rstrip()
-    return truncated + "…"
+    parts: list[str] = []
+    if caption.title:
+        parts.append(f"<b>{html.escape(caption.title)}</b>")
+    if caption.soundbite_title:
+        parts.append(html.escape(caption.soundbite_title))
+    if caption.episode_url:
+        href = html.escape(caption.episode_url, quote=True)
+        parts.append(f'<a href="{href}">{html.escape(link_text)}</a>')
+    if caption.tags:
+        parts.append(" ".join(f"#{t}" for t in caption.tags))
+    return "\n\n".join(parts)
 
 
 def _privacy_map() -> dict:
@@ -104,7 +111,7 @@ class TelegramPlatform(BasePlatform):
         privacy_class = privacy_map.get(privacy_key, privacy_map["all"])
         caption_text = caption.body
         story_max = int(self.config.get("story_max_duration", STORY_MAX_DURATION))
-        caption_limit = int(self.config.get("message_caption_limit", MESSAGE_CAPTION_LIMIT))
+        link_text = self.config.get("link_text", DEFAULT_LINK_TEXT)
 
         duration = _probe_duration(video_path)
 
@@ -135,17 +142,19 @@ class TelegramPlatform(BasePlatform):
                     results.append(f"telegram:story:{peer}")
                     logger.info("Telegram Story posted to '%s'.", peer)
             else:
-                # Too long for a story (>60s): post a normal video message.
+                # Too long for a story (>60s): post a normal video message with a
+                # clean caption (no transcript) and a clickable episode link.
                 logger.info(
                     "Video is %.1fs (> %ds): posting a normal video message instead of a story.",
                     duration, story_max,
                 )
-                media_caption = _truncate_caption(caption_text, caption_limit)
+                message_caption = _build_message_caption(caption, link_text)
                 for peer in peers:
                     logger.info("Sending Telegram video message to peer '%s'...", peer)
                     await client.send_file(
                         peer, str(video_path),
-                        caption=media_caption,
+                        caption=message_caption,
+                        parse_mode="html",
                         supports_streaming=True,
                     )
                     results.append(f"telegram:message:{peer}")
