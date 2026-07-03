@@ -264,9 +264,9 @@ Posts a Story to your personal account or a channel using
 
 **Long videos:** Telegram Stories only accept videos up to 60 seconds. Videos
 longer than `story_max_duration` (default 60) are posted as a **normal video
-message** to the same peers instead of a story. If the caption exceeds the
-media caption limit (`message_caption_limit`, default 1024), it is truncated on
-a word boundary with an ellipsis.
+message** to the same peers instead of a story. The message caption is built
+from the episode title, soundbite title, a clickable episode link (anchor text
+set by `link_text`) and the hashtags — the transcript is left out.
 
 **Official docs:**
 - [Telethon — Getting started](https://docs.telethon.dev/en/stable/basic/signing-in.html)

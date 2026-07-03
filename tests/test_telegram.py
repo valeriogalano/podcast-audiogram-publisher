@@ -1,9 +1,10 @@
-"""Unit tests for the pure decision helpers in the Telegram platform."""
+"""Unit tests for the pure helpers in the Telegram platform."""
+from publisher.platforms.base import Caption
 from publisher.platforms.telegram import (
     STORY_MAX_DURATION,
-    MESSAGE_CAPTION_LIMIT,
+    DEFAULT_LINK_TEXT,
     _use_story,
-    _truncate_caption,
+    _build_message_caption,
 )
 
 
@@ -30,27 +31,48 @@ class TestUseStory:
         assert STORY_MAX_DURATION == 60
 
 
-class TestTruncateCaption:
-    def test_short_caption_is_unchanged(self):
-        assert _truncate_caption("hello", limit=1024) == "hello"
+def _caption(**kwargs) -> Caption:
+    defaults = dict(
+        title="Episode 150: The title",
+        soundbite_title="A soundbite line",
+        body="full body with the TRANSCRIPT_MARKER inside",
+        tags=["podcast", "python"],
+        episode_url="https://example.com/ep150",
+    )
+    defaults.update(kwargs)
+    return Caption(**defaults)
 
-    def test_caption_exactly_at_limit_is_unchanged(self):
-        text = "x" * MESSAGE_CAPTION_LIMIT
-        assert _truncate_caption(text) == text
 
-    def test_long_caption_is_truncated_within_limit(self):
-        text = "word " * 500  # 2500 chars
-        result = _truncate_caption(text, limit=100)
-        assert len(result) <= 100
-        assert result.endswith("…")
+class TestBuildMessageCaption:
+    def test_excludes_the_transcript_body(self):
+        result = _build_message_caption(_caption())
+        assert "TRANSCRIPT_MARKER" not in result
 
-    def test_truncation_cuts_on_word_boundary(self):
-        text = "alpha beta gamma delta epsilon"
-        result = _truncate_caption(text, limit=14)
-        # No partial word before the ellipsis
-        assert result.endswith("…")
-        assert "gam…" not in result
-        assert result[:-1].strip().split(" ")[-1] in {"alpha", "beta"}
+    def test_includes_title_soundbite_and_hashtags(self):
+        result = _build_message_caption(_caption())
+        assert "Episode 150: The title" in result
+        assert "A soundbite line" in result
+        assert "#podcast" in result
+        assert "#python" in result
 
-    def test_default_limit_is_1024(self):
-        assert MESSAGE_CAPTION_LIMIT == 1024
+    def test_link_is_a_clickable_anchor(self):
+        result = _build_message_caption(_caption(), link_text="Listen now")
+        assert '<a href="https://example.com/ep150">Listen now</a>' in result
+
+    def test_uses_default_link_text(self):
+        result = _build_message_caption(_caption())
+        assert DEFAULT_LINK_TEXT in result
+
+    def test_html_special_chars_are_escaped(self):
+        result = _build_message_caption(_caption(soundbite_title="A & B <tag>"))
+        assert "A &amp; B &lt;tag&gt;" in result
+        assert "<tag>" not in result
+
+    def test_missing_url_omits_the_link(self):
+        result = _build_message_caption(_caption(episode_url=None))
+        assert "<a href" not in result
+        assert "Episode 150: The title" in result
+
+    def test_missing_tags_omits_hashtags(self):
+        result = _build_message_caption(_caption(tags=[]))
+        assert "#" not in result
