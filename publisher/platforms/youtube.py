@@ -1,4 +1,6 @@
 import logging
+import os
+import sys
 import time
 from pathlib import Path
 
@@ -12,9 +14,25 @@ _SCOPES = [
 ]
 
 
+def _is_interactive() -> bool:
+    return sys.stdin.isatty() and not os.environ.get("CI")
+
+
+def _run_interactive_flow(client_secrets: str):
+    if not _is_interactive():
+        raise RuntimeError(
+            "YouTube OAuth token is missing or invalid and no interactive terminal is "
+            "available to complete the authorization flow (CI/non-interactive environment "
+            "detected). Refresh the token locally and retry."
+        )
+    from google_auth_oauthlib.flow import InstalledAppFlow
+
+    flow = InstalledAppFlow.from_client_secrets_file(client_secrets, _SCOPES)
+    return flow.run_local_server(port=0)
+
+
 def _get_credentials(client_secrets: str, token_path: str):
     from google.oauth2.credentials import Credentials
-    from google_auth_oauthlib.flow import InstalledAppFlow
     from google.auth.transport.requests import Request
 
     creds = None
@@ -35,11 +53,9 @@ def _get_credentials(client_secrets: str, token_path: str):
                 creds.refresh(Request())
             except Exception as exc:
                 logger.warning("Token refresh failed (%s), re-authorizing...", exc)
-                flow = InstalledAppFlow.from_client_secrets_file(client_secrets, _SCOPES)
-                creds = flow.run_local_server(port=0)
+                creds = _run_interactive_flow(client_secrets)
         else:
-            flow = InstalledAppFlow.from_client_secrets_file(client_secrets, _SCOPES)
-            creds = flow.run_local_server(port=0)
+            creds = _run_interactive_flow(client_secrets)
         token_file.parent.mkdir(parents=True, exist_ok=True)
         token_file.write_text(creds.to_json())
 
