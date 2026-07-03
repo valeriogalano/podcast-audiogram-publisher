@@ -262,6 +262,12 @@ Posts a Story to your personal account or a channel using
 5. On the first run you will be prompted for your phone number and a
    verification code. A `.session` file is saved and reused afterwards.
 
+**Long videos:** Telegram Stories only accept videos up to 60 seconds. Videos
+longer than `story_max_duration` (default 60) are posted as a **normal video
+message** to the same peers instead of a story. If the caption exceeds the
+media caption limit (`message_caption_limit`, default 1024), it is truncated on
+a word boundary with an ellipsis.
+
 **Official docs:**
 - [Telethon — Getting started](https://docs.telethon.dev/en/stable/basic/signing-in.html)
 - [Telegram API — Stories](https://core.telegram.org/api/stories)
