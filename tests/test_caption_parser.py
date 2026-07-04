@@ -35,6 +35,46 @@ def test_tags_extracted():
     assert c.tags == ["podcast", "storia-dellinformatica", "informatica-vintage"]
 
 
+def test_tags_extracted_when_transcript_follows_hashtag_line():
+    c = parse_caption_text(
+        """\
+Episodio 150
+
+Titolo del soundbite
+
+Ascolta l'episodio completo: https://example.com/episodes/150/
+
+#podcast #pensieri-in-codice
+
+Questa e' la trascrizione del soundbite, aggiunta in fondo al caption.
+"""
+    )
+
+    assert c.tags == ["podcast", "pensieri-in-codice"]
+
+
+def test_tags_ignore_inline_hashtags_without_dedicated_hashtag_line():
+    c = parse_caption_text("Titolo\n\nCorpo con un #hashtag citato nella frase.")
+
+    assert c.tags == []
+
+
+def test_tags_use_first_dedicated_hashtag_line():
+    c = parse_caption_text(
+        """\
+Titolo
+
+#primo #tag
+
+Corpo
+
+#secondo
+"""
+    )
+
+    assert c.tags == ["primo", "tag"]
+
+
 def test_episode_url():
     c = parse_caption_text(FIXTURE)
     assert c.episode_url == "https://example.com/episodes/142/"
