@@ -1,10 +1,14 @@
 """Unit tests for the pure helpers in the Telegram platform."""
 from publisher.platforms.base import Caption
+from publisher.state import PublishState
 from publisher.platforms.telegram import (
     STORY_MAX_DURATION,
     DEFAULT_LINK_TEXT,
     _use_story,
     _build_message_caption,
+    _is_peer_published,
+    _mark_peer_published,
+    _peer_state_platform,
 )
 
 
@@ -76,3 +80,18 @@ class TestBuildMessageCaption:
     def test_missing_tags_omits_hashtags(self):
         result = _build_message_caption(_caption(tags=[]))
         assert "#" not in result
+
+
+class TestPeerState:
+    def test_peer_state_platform_includes_peer(self):
+        assert _peer_state_platform("telegram", "@channel") == "telegram:peer:@channel"
+
+    def test_peer_state_is_separate_from_platform_state(self, tmp_path):
+        state = PublishState(tmp_path / "published.json")
+        key = "ep150/sb1"
+
+        _mark_peer_published(state, key, "telegram", "me")
+
+        assert _is_peer_published(state, key, "telegram", "me") is True
+        assert _is_peer_published(state, key, "telegram", "@other") is False
+        assert state.is_published("telegram", key) is False

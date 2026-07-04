@@ -1,4 +1,5 @@
 import argparse
+from collections import OrderedDict
 import logging
 import logging.handlers
 import sys
@@ -63,7 +64,16 @@ def _publish_assets(assets, platform_names, config, logger, dry_run, state=None,
             exit_code = 1
             continue
         try:
-            result = platform.publish(assets.video_vertical, caption)
+            if callable(getattr(type(platform), "publish_with_state", None)):
+                result = platform.publish_with_state(
+                    assets.video_vertical,
+                    caption,
+                    state=state,
+                    key=key,
+                    platform_name=name,
+                )
+            else:
+                result = platform.publish(assets.video_vertical, caption)
             logger.info("[%s] Published: %s", name, result)
             if state and key:
                 state.mark_published(name, key)
@@ -181,22 +191,33 @@ def main(argv=None):
             logger.info("No soundbites found in %s.", output_dir)
             sys.exit(0)
 
-        # Find unpublished soundbites up to the configured limit
-        targets = []
+        # Find up to --limit unpublished soundbites per platform, then group
+        # platforms by soundbite so one broken platform does not block healthy
+        # platforms from advancing to later soundbites.
+        targets = OrderedDict()
+        selected_per_platform = {platform: 0 for platform in platform_names}
         for assets in all_soundbites:
-            if len(targets) >= args.limit:
+            if all(count >= args.limit for count in selected_per_platform.values()):
                 break
             key = soundbite_key(output_dir, assets)
-            pending = [p for p in platform_names if not state.is_published(p, key)]
+            pending = []
+            for platform in platform_names:
+                if selected_per_platform[platform] >= args.limit:
+                    continue
+                if not state.is_published(platform, key):
+                    pending.append(platform)
+                    selected_per_platform[platform] += 1
             if pending:
-                targets.append((assets, key, pending))
+                if key not in targets:
+                    targets[key] = [assets, []]
+                targets[key][1].extend(pending)
 
         if not targets:
             logger.info("All soundbites have been published. Nothing to do.")
             sys.exit(0)
 
         exit_code = 0
-        for assets, key, pending_platforms in targets:
+        for key, (assets, pending_platforms) in targets.items():
             logger.info("Next unpublished soundbite: %s (pending: %s)", key, pending_platforms)
             exit_code |= _publish_assets(
                 assets, pending_platforms, config, logger, args.dry_run, state=state, key=key

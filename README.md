@@ -96,13 +96,18 @@ soundbite automatically. On each invocation it:
    and soundbites.
 2. Orders them **newest episode first**, soundbites within an episode in
    ascending order (`sb1`, `sb2`, …).
-3. Picks up to **`--limit`** soundbites (default: `1`) not yet fully published
-   across all enabled platforms, starting from the most recent.
+3. Picks up to **`--limit`** soundbites (default: `1`) **per enabled platform**,
+   starting from the most recent pending soundbite for each platform.
 4. Publishes them in order, recording each result in the state file.
 
 The state is tracked **per platform**: if a soundbite was published on YouTube
 but the Instagram upload failed, the next run will retry only Instagram for
-that soundbite before moving on to the next one.
+that soundbite. Other healthy platforms can still advance to later soundbites in
+the same run.
+
+Telegram multi-peer delivery is tracked internally per peer. If a Story or
+message reaches the first peer and then fails on the second, the next retry skips
+the peer that already succeeded and only sends to the remaining peers.
 
 `--dry-run` logs which soundbite *would* be published and to which platforms,
 without uploading or updating the state file.
@@ -113,7 +118,8 @@ The state file (`published.json` by default, configurable via `state_file` in
 ```json
 {
   "youtube":   ["ep142/sb1", "ep142/sb2"],
-  "instagram": ["ep142/sb1"]
+  "instagram": ["ep142/sb1"],
+  "telegram:peer:me": ["ep142/sb1"]
 }
 ```
 
