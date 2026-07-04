@@ -6,6 +6,7 @@ import subprocess
 from pathlib import Path
 
 from .base import BasePlatform, Caption
+from ..state import PublishState
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +66,29 @@ def _build_message_caption(caption: Caption, link_text: str = DEFAULT_LINK_TEXT)
     return "\n\n".join(parts)
 
 
+def _peer_state_platform(platform_name: str, peer: object) -> str:
+    return f"{platform_name}:peer:{peer}"
+
+
+def _is_peer_published(
+    state: PublishState | None,
+    key: str | None,
+    platform_name: str,
+    peer: object,
+) -> bool:
+    return bool(state and key and state.is_published(_peer_state_platform(platform_name, peer), key))
+
+
+def _mark_peer_published(
+    state: PublishState | None,
+    key: str | None,
+    platform_name: str,
+    peer: object,
+) -> None:
+    if state and key:
+        state.mark_published(_peer_state_platform(platform_name, peer), key)
+
+
 def _privacy_map() -> dict:
     global _PRIVACY_MAP_LAZY
     if _PRIVACY_MAP_LAZY is None:
@@ -96,7 +120,39 @@ class TelegramPlatform(BasePlatform):
             )
         return asyncio.run(self._publish_async(video_path, caption))
 
-    async def _publish_async(self, video_path: Path, caption: Caption) -> str:
+    def publish_with_state(
+        self,
+        video_path: Path,
+        caption: Caption,
+        *,
+        state: PublishState | None,
+        key: str | None,
+        platform_name: str = "telegram",
+    ) -> str:
+        if not self.is_configured():
+            raise RuntimeError(
+                "Telegram api_id and api_hash must be set in config. "
+                "Get them at https://my.telegram.org/apps"
+            )
+        return asyncio.run(
+            self._publish_async(
+                video_path,
+                caption,
+                state=state,
+                key=key,
+                platform_name=platform_name,
+            )
+        )
+
+    async def _publish_async(
+        self,
+        video_path: Path,
+        caption: Caption,
+        *,
+        state: PublishState | None = None,
+        key: str | None = None,
+        platform_name: str = "telegram",
+    ) -> str:
         from telethon import TelegramClient
         from telethon.tl.functions.stories import SendStoryRequest
         from telethon.tl.types import DocumentAttributeVideo, InputMediaUploadedDocument
@@ -129,6 +185,10 @@ class TelegramPlatform(BasePlatform):
                     )],
                 )
                 for peer in peers:
+                    if _is_peer_published(state, key, platform_name, peer):
+                        logger.info("Telegram Story already posted to peer '%s', skipping.", peer)
+                        results.append(f"telegram:story:skipped:{peer}")
+                        continue
                     logger.info("Sending Telegram Story to peer '%s'...", peer)
                     await client(
                         SendStoryRequest(
@@ -140,6 +200,7 @@ class TelegramPlatform(BasePlatform):
                         )
                     )
                     results.append(f"telegram:story:{peer}")
+                    _mark_peer_published(state, key, platform_name, peer)
                     logger.info("Telegram Story posted to '%s'.", peer)
             else:
                 # Too long for a story (>60s): post a normal video message with a
@@ -150,6 +211,10 @@ class TelegramPlatform(BasePlatform):
                 )
                 message_caption = _build_message_caption(caption, link_text)
                 for peer in peers:
+                    if _is_peer_published(state, key, platform_name, peer):
+                        logger.info("Telegram video message already posted to peer '%s', skipping.", peer)
+                        results.append(f"telegram:message:skipped:{peer}")
+                        continue
                     logger.info("Sending Telegram video message to peer '%s'...", peer)
                     await client.send_file(
                         peer, str(video_path),
@@ -158,6 +223,7 @@ class TelegramPlatform(BasePlatform):
                         supports_streaming=True,
                     )
                     results.append(f"telegram:message:{peer}")
+                    _mark_peer_published(state, key, platform_name, peer)
                     logger.info("Telegram video message posted to '%s'.", peer)
 
         return ", ".join(results)
