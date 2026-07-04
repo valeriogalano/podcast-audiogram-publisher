@@ -1,4 +1,6 @@
 import json
+import os
+import tempfile
 from pathlib import Path
 
 
@@ -25,7 +27,25 @@ class PublishState:
         return {}
 
     def _save(self) -> None:
-        self.path.write_text(json.dumps(self._data, indent=2), encoding="utf-8")
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        tmp_path = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                "w",
+                encoding="utf-8",
+                dir=self.path.parent,
+                prefix=f".{self.path.name}.",
+                suffix=".tmp",
+                delete=False,
+            ) as tmp:
+                tmp.write(json.dumps(self._data, indent=2))
+                tmp.write("\n")
+                tmp_path = Path(tmp.name)
+            os.replace(tmp_path, self.path)
+        except Exception:
+            if tmp_path is not None:
+                tmp_path.unlink(missing_ok=True)
+            raise
 
     def is_published(self, platform: str, key: str) -> bool:
         return key in self._data.get(platform, [])
