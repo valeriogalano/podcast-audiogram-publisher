@@ -38,10 +38,17 @@ telegram:
   session: ./secrets/telegram.session
   peers:                  # one or more targets: "me", "@channelname", or a numeric group ID
     - "me"
+  # Optional per-mode destinations. Videos within story_max_duration go to
+  # story_peers, longer ones go to message_peers. Each list falls back to
+  # `peers` above when omitted.
+  # story_peers:
+  #   - "me"
+  # message_peers:
+  #   - "@mychannel"
   period: 86400           # story duration in seconds (86400 = 24h)
   privacy: all            # all | contacts | close_friends
   # Telegram Stories only accept videos up to 60s. Videos longer than this are
-  # posted as a normal video message to the peer(s) instead of a story.
+  # posted as a normal video message to message_peers instead of a story.
   story_max_duration: 60
   # Anchor text for the clickable episode link in the normal video message
   # (the message caption is built from the episode title, soundbite title, link

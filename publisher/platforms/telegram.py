@@ -45,6 +45,17 @@ def _use_story(duration: float, max_duration: float = STORY_MAX_DURATION) -> boo
     return duration <= max_duration
 
 
+def _peers_for(config: dict, use_story: bool) -> list:
+    """Return the configured destinations for the chosen publishing mode.
+
+    Stories and normal video messages target two independent lists
+    (``story_peers`` / ``message_peers``). Both fall back to the legacy single
+    ``peers``/``peer`` setting, so an existing config keeps working unchanged.
+    """
+    fallback = config.get("peers") or [config.get("peer", "me")]
+    return config.get("story_peers" if use_story else "message_peers") or fallback
+
+
 def _build_message_caption(caption: Caption, link_text: str = DEFAULT_LINK_TEXT) -> str:
     """Build a clean HTML caption for a normal Telegram video message.
 
@@ -160,7 +171,6 @@ class TelegramPlatform(BasePlatform):
         api_id = int(self.config["api_id"])
         api_hash = self.config["api_hash"]
         session_path = self.config.get("session", "./secrets/telegram.session")
-        peers = self.config.get("peers") or [self.config.get("peer", "me")]
         period = int(self.config.get("period", 86400))
         privacy_key = self.config.get("privacy", "all")
         privacy_map = _privacy_map()
@@ -170,11 +180,13 @@ class TelegramPlatform(BasePlatform):
         link_text = self.config.get("link_text", DEFAULT_LINK_TEXT)
 
         duration = _probe_duration(video_path)
+        use_story = _use_story(duration, story_max)
+        peers = _peers_for(self.config, use_story)
 
         results = []
         logger.info("Connecting to Telegram...")
         async with TelegramClient(session_path, api_id, api_hash) as client:
-            if _use_story(duration, story_max):
+            if use_story:
                 logger.info("Uploading video to Telegram: %s", video_path.name)
                 uploaded = await client.upload_file(str(video_path))
                 media = InputMediaUploadedDocument(
