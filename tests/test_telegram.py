@@ -9,6 +9,7 @@ from publisher.platforms.telegram import (
     _is_peer_published,
     _mark_peer_published,
     _peer_state_platform,
+    _peers_for,
 )
 
 
@@ -33,6 +34,27 @@ class TestUseStory:
 
     def test_default_limit_is_sixty(self):
         assert STORY_MAX_DURATION == 60
+
+
+class TestPeersFor:
+    CONFIG = {"story_peers": ["@stories"], "message_peers": ["@chan", -100]}
+
+    def test_story_and_message_use_separate_lists(self):
+        assert _peers_for(self.CONFIG, True) == ["@stories"]
+        assert _peers_for(self.CONFIG, False) == ["@chan", -100]
+
+    def test_falls_back_to_legacy_peers(self):
+        assert _peers_for({"peers": ["me"]}, True) == ["me"]
+        assert _peers_for({"peers": ["me"]}, False) == ["me"]
+
+    def test_falls_back_to_single_peer_then_to_me(self):
+        assert _peers_for({"peer": "@x"}, False) == ["@x"]
+        assert _peers_for({}, True) == ["me"]
+
+    def test_one_list_configured_other_falls_back(self):
+        config = {"story_peers": ["@stories"], "peers": ["me"]}
+        assert _peers_for(config, True) == ["@stories"]
+        assert _peers_for(config, False) == ["me"]
 
 
 def _caption(**kwargs) -> Caption:
