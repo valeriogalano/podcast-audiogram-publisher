@@ -208,7 +208,7 @@ Requires a **Business or Creator Instagram account** linked to a Facebook Page.
 
 The tool will warn you 7 days before expiry. To refresh:
 ```
-GET https://graph.facebook.com/v19.0/oauth/access_token
+GET https://graph.facebook.com/v26.0/oauth/access_token
     ?grant_type=ig_exchange_token
     &client_id=<app_id>
     &client_secret=<app_secret>

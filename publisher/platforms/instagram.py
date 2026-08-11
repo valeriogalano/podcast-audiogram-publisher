@@ -9,7 +9,7 @@ from .base import BasePlatform, Caption
 
 logger = logging.getLogger(__name__)
 
-_GRAPH_BASE = "https://graph.facebook.com/v19.0"
+_GRAPH_BASE = "https://graph.facebook.com/v26.0"
 _TOKEN_WARNING_DAYS = 7
 _POLL_INTERVAL = 5
 _POLL_MAX_ATTEMPTS = 24  # 2 minutes total
