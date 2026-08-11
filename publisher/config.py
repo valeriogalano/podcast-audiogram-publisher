@@ -16,6 +16,7 @@ DEFAULTS = {
     "instagram": {
         "enabled": False,
         "access_token": "",
+        # Optional: resolved from the token itself when left empty.
         "ig_user_id": "",
         "token_expiry": "",
     },
