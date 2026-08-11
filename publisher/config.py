@@ -19,6 +19,9 @@ DEFAULTS = {
         # Optional: resolved from the token itself when left empty.
         "ig_user_id": "",
         "token_expiry": "",
+        # Required: Instagram Login downloads the video from a public URL,
+        # it has no upload endpoint. Placeholders: {filename}, {episode}.
+        "video_url_template": "",
     },
     "tiktok": {
         "enabled": False,

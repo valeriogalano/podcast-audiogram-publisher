@@ -96,6 +96,36 @@ class TestUserIdResolution:
                 platform._user_id("tok")
 
 
+class TestVideoUrl:
+    def test_builds_the_url_from_the_template(self):
+        platform = InstagramPlatform({
+            "access_token": "tok",
+            "video_url_template": "https://example.com/rel/podcast-ep{episode}/{filename}",
+        })
+        url = platform.video_url_for(Path("/tmp/ep150_sb1_nosubs_vertical.mp4"))
+        assert url == "https://example.com/rel/podcast-ep150/ep150_sb1_nosubs_vertical.mp4"
+
+    def test_template_without_episode_placeholder(self):
+        platform = InstagramPlatform({
+            "access_token": "tok",
+            "video_url_template": "https://cdn.example.com/{filename}",
+        })
+        assert platform.video_url_for(Path("/tmp/sb.mp4")) == "https://cdn.example.com/sb.mp4"
+
+    def test_missing_template_explains_why(self):
+        platform = InstagramPlatform({"access_token": "tok"})
+        with pytest.raises(RuntimeError, match="video_url_template"):
+            platform.video_url_for(Path("/tmp/sb.mp4"))
+
+    def test_unparsable_episode_is_reported(self):
+        platform = InstagramPlatform({
+            "access_token": "tok",
+            "video_url_template": "https://example.com/{episode}/{filename}",
+        })
+        with pytest.raises(RuntimeError, match="episode number"):
+            platform.video_url_for(Path("/tmp/soundbite.mp4"))
+
+
 class TestPublish:
     def test_raises_without_token(self, tmp_path):
         video = tmp_path / "sb.mp4"
@@ -104,16 +134,19 @@ class TestPublish:
             InstagramPlatform({}).publish(video, _caption())
 
     def test_publishes_and_returns_the_permalink(self, tmp_path):
-        video = tmp_path / "sb.mp4"
+        video = tmp_path / "ep150_sb1.mp4"
         video.write_bytes(b"fake-video")
-        platform = InstagramPlatform({"access_token": "tok", "ig_user_id": "42"})
-
-        calls = []
+        platform = InstagramPlatform({
+            "access_token": "tok",
+            "ig_user_id": "42",
+            "video_url_template": "https://example.com/ep{episode}/{filename}",
+        })
+        seen = {}
 
         def fake_request(method, url, **kwargs):
-            calls.append((method, url))
             if url.endswith("/42/media"):
-                return {"id": "container-1", "uri": "https://rupload.example/1"}
+                seen["params"] = kwargs["params"]
+                return {"id": "container-1"}
             if url.endswith("/container-1"):
                 return {"status_code": "FINISHED"}
             if url.endswith("/42/media_publish"):
@@ -122,54 +155,55 @@ class TestPublish:
                 return {"permalink": "https://www.instagram.com/reel/abc/"}
             raise AssertionError(f"unexpected call: {url}")
 
-        with patch("publisher.platforms.instagram._request_with_retry", side_effect=fake_request), \
-                patch("publisher.platforms.instagram.requests.post") as upload, \
-                patch("publisher.platforms.instagram._raise_for_error"):
-            upload.return_value.json.return_value = {}
+        with patch("publisher.platforms.instagram._request_with_retry", side_effect=fake_request):
             result = platform.publish(video, _caption())
 
         assert result == "https://www.instagram.com/reel/abc/"
-        # The container is created once and the binary goes to the returned URL.
-        assert upload.call_args[0][0] == "https://rupload.example/1"
-        assert upload.call_args[1]["headers"]["file_size"] == str(len(b"fake-video"))
+        # Meta scarica il video: mandiamo un URL, mai il file.
+        assert seen["params"]["video_url"] == "https://example.com/ep150/ep150_sb1.mp4"
+        assert "upload_type" not in seen["params"]
 
     def test_raises_when_container_processing_fails(self, tmp_path):
-        video = tmp_path / "sb.mp4"
+        video = tmp_path / "ep150_sb1.mp4"
         video.write_bytes(b"x")
-        platform = InstagramPlatform({"access_token": "tok", "ig_user_id": "42"})
+        platform = InstagramPlatform({
+            "access_token": "tok",
+            "ig_user_id": "42",
+            "video_url_template": "https://example.com/{filename}",
+        })
 
         def fake_request(method, url, **kwargs):
             if url.endswith("/42/media"):
-                return {"id": "container-1", "uri": "https://rupload.example/1"}
+                return {"id": "container-1"}
             if url.endswith("/container-1"):
                 return {"status_code": "ERROR", "status": "video too long"}
             raise AssertionError(f"unexpected call: {url}")
 
-        with patch("publisher.platforms.instagram._request_with_retry", side_effect=fake_request), \
-                patch("publisher.platforms.instagram.requests.post"), \
-                patch("publisher.platforms.instagram._raise_for_error"):
+        with patch("publisher.platforms.instagram._request_with_retry", side_effect=fake_request):
             with pytest.raises(RuntimeError, match="video too long"):
                 platform.publish(video, _caption())
 
     def test_caption_is_truncated_to_the_api_limit(self, tmp_path):
-        video = tmp_path / "sb.mp4"
+        video = tmp_path / "ep150_sb1.mp4"
         video.write_bytes(b"x")
-        platform = InstagramPlatform({"access_token": "tok", "ig_user_id": "42"})
+        platform = InstagramPlatform({
+            "access_token": "tok",
+            "ig_user_id": "42",
+            "video_url_template": "https://example.com/{filename}",
+        })
         seen = {}
 
         def fake_request(method, url, **kwargs):
             if url.endswith("/42/media"):
                 seen["caption"] = kwargs["params"]["caption"]
-                return {"id": "c", "uri": "https://rupload.example/1"}
+                return {"id": "c"}
             if url.endswith("/c"):
                 return {"status_code": "FINISHED"}
             if url.endswith("/42/media_publish"):
                 return {"id": "m"}
             return {"permalink": "https://www.instagram.com/reel/x/"}
 
-        with patch("publisher.platforms.instagram._request_with_retry", side_effect=fake_request), \
-                patch("publisher.platforms.instagram.requests.post"), \
-                patch("publisher.platforms.instagram._raise_for_error"):
+        with patch("publisher.platforms.instagram._request_with_retry", side_effect=fake_request):
             platform.publish(video, _caption(body="a" * 3000))
 
         assert len(seen["caption"]) == 2200
