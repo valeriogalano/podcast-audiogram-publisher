@@ -19,7 +19,9 @@ def _check_token_expiry(token_expiry: str) -> None:
     if not token_expiry:
         return
     try:
-        expiry = date.fromisoformat(token_expiry)
+        # str(): YAML deserializza una data non quotata in datetime.date, e
+        # fromisoformat su un date solleva TypeError, non ValueError.
+        expiry = date.fromisoformat(str(token_expiry))
     except ValueError:
         logger.warning("Instagram token_expiry is not a valid ISO date: %s", token_expiry)
         return
