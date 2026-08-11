@@ -1,5 +1,6 @@
 import argparse
 from collections import OrderedDict
+import json
 import logging
 import logging.handlers
 import sys
@@ -10,7 +11,10 @@ from .config import load_config
 from .detector import detect_assets, scan_output_dir, soundbite_key
 from .platforms.base import Caption
 from .platforms.youtube import YouTubePlatform
-from .platforms.instagram import InstagramPlatform
+from .platforms.instagram import (
+    InstagramPlatform,
+    refresh_access_token as refresh_instagram_access_token,
+)
 from .platforms.tiktok import TikTokPlatform
 from .platforms.telegram import TelegramPlatform
 from .platforms.mastodon import MastodonPlatform
@@ -83,6 +87,26 @@ def _publish_assets(assets, platform_names, config, logger, dry_run, state=None,
     return exit_code
 
 
+def _refresh_instagram_token(config: dict, logger) -> int:
+    """Print a freshly refreshed Instagram token as JSON. Returns an exit code.
+
+    The token goes to stdout and nothing else does, so a caller can pipe it
+    straight into a secret store without scraping the logs.
+    """
+    token = config.get("instagram", {}).get("access_token")
+    if not token:
+        logger.error("No instagram.access_token in config: nothing to refresh.")
+        return 1
+    try:
+        new_token, expiry = refresh_instagram_access_token(token)
+    except Exception as exc:
+        logger.error("Instagram token refresh failed: %s", exc)
+        return 1
+    logger.info("Instagram token refreshed, valid until %s.", expiry.isoformat())
+    print(json.dumps({"access_token": new_token, "token_expiry": expiry.isoformat()}))
+    return 0
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(
         prog="python -m publisher",
@@ -129,6 +153,14 @@ def main(argv=None):
         help="Print what would be published without uploading",
     )
     parser.add_argument(
+        "--refresh-instagram-token",
+        action="store_true",
+        help=(
+            "Refresh the long-lived Instagram token, print the new token and its "
+            "expiry date as JSON on stdout, and exit. Publishes nothing."
+        ),
+    )
+    parser.add_argument(
         "--log-level",
         default="INFO",
         choices=["DEBUG", "INFO", "WARNING", "ERROR"],
@@ -167,6 +199,9 @@ def main(argv=None):
     except FileNotFoundError as exc:
         logger.error("%s", exc)
         sys.exit(1)
+
+    if args.refresh_instagram_token:
+        sys.exit(_refresh_instagram_token(config, logger))
 
     platform_names = _get_enabled_platforms(
         config, args.platforms.split(",") if args.platforms else None

@@ -18,7 +18,10 @@ youtube:
 
 instagram:
   enabled: false
+  # Long-lived token from the Instagram Login flow (60 days, refreshable with
+  # `python -m publisher --refresh-instagram-token`).
   access_token: ""
+  # Optional: left empty, it is resolved from the token at publish time.
   ig_user_id: ""
   token_expiry: ""        # ISO date YYYY-MM-DD, used to warn before expiry
 

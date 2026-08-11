@@ -189,35 +189,46 @@ automatically — no special flag is needed.
 
 ### Instagram Reels
 
-Requires a **Business or Creator Instagram account** linked to a Facebook Page.
+Uses the **Instagram API with Instagram Login**, not the Facebook Login flavour.
+The difference matters: this one needs no Facebook Page, and its long-lived
+token can be refreshed programmatically instead of by hand in the Access Token
+Debugger every 60 days.
+
+Requires a **Business or Creator Instagram account**. That is the whole
+prerequisite — no Page, no Page link, no `pages_*` permissions.
 
 **Steps:**
 
 1. Go to [Meta for Developers](https://developers.facebook.com/) and create an
-   app (type: *Business*).
-2. Add the **Instagram Graph API** product to the app.
-3. Request the permissions: `instagram_basic`, `instagram_content_publish`,
-   `pages_read_engagement`.
-4. Generate a **User Access Token** and exchange it for a **long-lived token**
-   (valid 60 days) using the
-   [Access Token Debugger](https://developers.facebook.com/tools/explorer/).
-5. Find your **Instagram User ID** from the Graph API Explorer:
-   `GET /me?fields=id,name` with your token.
-6. Fill in `access_token`, `ig_user_id`, and `token_expiry` (ISO date,
-   e.g. `2025-12-31`) in `config.yaml`.
+   app, then add the use case **"Gestisci i messaggi e i contenuti su
+   Instagram"**.
+2. Open *Personalizza caso d'uso -> Configurazione dell'API con Instagram* and
+   add the permissions `instagram_business_basic` and
+   `instagram_business_content_publish`.
+3. Under *Genera i token d'accesso*, add your Instagram account and generate a
+   token. The account needs the Instagram tester role, assigned in the *Ruoli*
+   tab.
+4. Put the token in `access_token` and its expiry in `token_expiry` (ISO date,
+   e.g. `2026-10-10`).
 
-The tool will warn you 7 days before expiry. To refresh:
+`ig_user_id` is **optional**: left empty, it is resolved from the token at
+publish time with `GET /me?fields=user_id`. Set it only to save one API call.
+
+**Refreshing the token.** The tool warns 7 days before expiry and refuses to
+publish after it. To get a fresh 60-day token:
+
+```bash
+python -m publisher --refresh-instagram-token
+# {"access_token": "IGA...", "token_expiry": "2026-10-10"}
 ```
-GET https://graph.facebook.com/v26.0/oauth/access_token
-    ?grant_type=ig_exchange_token
-    &client_id=<app_id>
-    &client_secret=<app_secret>
-    &access_token=<current_token>
-```
+
+Only the JSON goes to stdout (logs go to stderr), so it can be piped straight
+into a secret store. Meta requires the current token to be at least 24 hours
+old and not yet expired — this cannot resurrect a token you let die.
 
 **Official docs:**
-- [Instagram Graph API — Content Publishing](https://developers.facebook.com/docs/instagram-api/guides/content-publishing)
-- [Long-lived access tokens](https://developers.facebook.com/docs/instagram-basic-display-api/guides/long-lived-access-tokens)
+- [Instagram API with Instagram Login — Content Publishing](https://developers.facebook.com/docs/instagram-platform/content-publishing)
+- [Long-lived access tokens](https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/business-login#long-lived-access-tokens)
 
 ---
 
@@ -306,8 +317,10 @@ pytest tests/ -v
 Planned platform additions, in priority order:
 
 - **Facebook** — Reels (vertical), video posts (square/horizontal), and Stories
-  (vertical) via Meta Graph API. Shares infrastructure with the existing
-  Instagram integration.
+  (vertical) via the Meta Graph API. Note that it shares *little* with the
+  Instagram module: since Instagram moved to the Instagram Login API
+  (`graph.instagram.com`), Facebook is the only remaining consumer of
+  `graph.facebook.com` here, and would need its own auth flow.
 - **YouTube (standard upload)** — Full-length video uploads using the existing
   YouTube credentials, targeting the horizontal format produced by the
   audiogram generator.
