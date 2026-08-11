@@ -5,8 +5,15 @@ account to be linked to a Facebook Page and its token can only be renewed by
 hand in the Access Token Debugger. With Instagram Login a professional account
 is enough, and the long-lived token can be refreshed programmatically — see
 ``refresh_access_token``.
+
+The trade-off: **this flavour has no upload endpoint**. `upload_type=resumable`
+is Facebook-Login only; here Meta downloads the video from a public URL, so the
+file must already be hosted somewhere reachable (see ``video_url_template``).
+Verified the hard way on 2026-08-11: sending the video as a resumable upload
+answers `error 100: The parameter video_url is required`.
 """
 import logging
+import re
 import time
 from datetime import date, timedelta
 from pathlib import Path
@@ -124,6 +131,30 @@ class InstagramPlatform(BasePlatform):
         logger.info("Resolved Instagram account @%s (id %s)", data.get("username", "?"), user_id)
         return str(user_id)
 
+    def video_url_for(self, video_path: Path) -> str:
+        """Public URL of *video_path*, built from video_url_template.
+
+        Instagram Login has no upload endpoint: Meta fetches the file over HTTP
+        at publish time, so the video must already be reachable publicly.
+        """
+        template = self.config.get("video_url_template", "")
+        if not template:
+            raise RuntimeError(
+                "Instagram needs video_url_template in config: the API with Instagram Login "
+                "does not accept file uploads, it downloads the video from a public URL. "
+                "Example: https://github.com/<owner>/<repo>/releases/download/podcast-ep{episode}/{filename}"
+            )
+        fields = {"filename": video_path.name}
+        if "{episode}" in template:
+            match = re.match(r"ep(\d+)_", video_path.name)
+            if not match:
+                raise RuntimeError(
+                    f"video_url_template uses {{episode}} but the episode number could not be "
+                    f"read from the file name '{video_path.name}' (expected a leading 'ep<N>_')."
+                )
+            fields["episode"] = match.group(1)
+        return template.format(**fields)
+
     def publish(self, video_path: Path, caption: Caption) -> str:
         if not self.is_configured():
             raise RuntimeError("Instagram access_token must be set in config.")
@@ -133,43 +164,26 @@ class InstagramPlatform(BasePlatform):
         token = self.config["access_token"]
         user_id = self._user_id(token)
         caption_text = caption.body[:_CAPTION_MAX_CHARS]
+        video_url = self.video_url_for(video_path)
 
-        # Step 1: create the container and get a resumable upload URL. Unlike the
-        # Facebook Login flow this is a single call: the container exists from
-        # the start, and the binary is uploaded into it.
-        logger.info("Creating Instagram Reels container for %s", video_path.name)
+        # Step 1: create the container. Meta downloads the video itself, so a
+        # 200 here only means the URL was accepted, not that the video is good.
+        logger.info("Creating Instagram Reels container from %s", video_url)
         container = _request_with_retry(
             "POST",
             f"{_GRAPH_BASE}/{user_id}/media",
             params={
                 "media_type": "REELS",
-                "upload_type": "resumable",
+                "video_url": video_url,
                 "caption": caption_text,
                 "access_token": token,
             },
         )
         container_id = container.get("id")
-        upload_url = container.get("uri")
-        if not container_id or not upload_url:
-            raise RuntimeError(f"Instagram did not return a container and upload URL: {container}")
+        if not container_id:
+            raise RuntimeError(f"Instagram did not return a container id: {container}")
 
-        # Step 2: upload the binary.
-        logger.info("Uploading video binary to Instagram...")
-        file_size = video_path.stat().st_size
-        with video_path.open("rb") as fh:
-            upload_resp = requests.post(
-                upload_url,
-                headers={
-                    "Authorization": f"OAuth {token}",
-                    "offset": "0",
-                    "file_size": str(file_size),
-                },
-                data=fh,
-                timeout=300,
-            )
-        _raise_for_error(upload_resp)
-
-        # Step 3: wait for Instagram to finish processing the video.
+        # Step 2: wait for Instagram to download and transcode the video.
         logger.info("Waiting for Instagram container %s to be ready...", container_id)
         for attempt in range(_POLL_MAX_ATTEMPTS):
             status = _request_with_retry(
@@ -189,7 +203,7 @@ class InstagramPlatform(BasePlatform):
         else:
             raise RuntimeError("Instagram media container did not become ready in time.")
 
-        # Step 4: publish.
+        # Step 3: publish.
         logger.info("Publishing Instagram Reel...")
         published = _request_with_retry(
             "POST",

@@ -214,6 +214,20 @@ prerequisite — no Page, no Page link, no `pages_*` permissions.
 `ig_user_id` is **optional**: left empty, it is resolved from the token at
 publish time with `GET /me?fields=user_id`. Set it only to save one API call.
 
+**`video_url_template` is required.** This API has *no upload endpoint*: Meta
+downloads the video over HTTP at publish time, so the file must already be
+hosted somewhere public. (`upload_type=resumable` exists only in the Facebook
+Login flavour — sending it here answers `error 100: The parameter video_url is
+required`.)
+
+```yaml
+video_url_template: "https://github.com/me/repo/releases/download/podcast-ep{episode}/{filename}"
+```
+
+`{filename}` is the video file name; `{episode}` is read from a leading `ep<N>_`
+in that name. Whatever the URL points at must be reachable **without
+authentication** while publishing — Meta curls it.
+
 **Refreshing the token.** The tool warns 7 days before expiry and refuses to
 publish after it. To get a fresh 60-day token:
 

@@ -24,6 +24,10 @@ instagram:
   # Optional: left empty, it is resolved from the token at publish time.
   ig_user_id: ""
   token_expiry: ""        # ISO date YYYY-MM-DD, used to warn before expiry
+  # Required. This API has no upload endpoint: Meta downloads the video from a
+  # public URL, so the file must already be hosted. {filename} and {episode}
+  # are substituted ({episode} is read from a leading "ep<N>_" in the file name).
+  video_url_template: ""
 
 tiktok:
   enabled: false
