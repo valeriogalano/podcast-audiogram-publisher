@@ -73,6 +73,16 @@ class TestRefreshAccessToken:
             with pytest.raises(RuntimeError, match="did not return a token"):
                 refresh_access_token("old-tok")
 
+    def test_raises_without_expires_in(self):
+        # Un default silenzioso qui datava la scadenza a oggi, e il giorno dopo
+        # il publisher rifiutava di pubblicare con un token ancora buono.
+        with patch(
+            "publisher.platforms.instagram._request_with_retry",
+            return_value={"access_token": "new-tok"},
+        ):
+            with pytest.raises(RuntimeError, match="did not return expires_in"):
+                refresh_access_token("old-tok")
+
 
 class TestUserIdResolution:
     def test_configured_id_wins_and_skips_the_call(self):

@@ -107,8 +107,13 @@ def refresh_access_token(access_token: str) -> tuple[str, date]:
     new_token = data.get("access_token")
     if not new_token:
         raise RuntimeError(f"Instagram refresh did not return a token: {data}")
-    expires_in = int(data.get("expires_in", 0))
-    return new_token, date.today() + timedelta(seconds=expires_in)
+    # Senza expires_in la scadenza calcolata sarebbe oggi: _check_token_expiry
+    # bloccherebbe la pubblicazione il giorno dopo, con un token ancora valido e
+    # un messaggio d'errore che accusa il token. Meglio fallire subito e qui.
+    expires_in = data.get("expires_in")
+    if expires_in is None:
+        raise RuntimeError(f"Instagram refresh did not return expires_in: {data}")
+    return new_token, date.today() + timedelta(seconds=int(expires_in))
 
 
 class InstagramPlatform(BasePlatform):
