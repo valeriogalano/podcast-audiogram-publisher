@@ -37,8 +37,32 @@ def _get_enabled_platforms(config: dict, override: list[str] | None) -> list[str
     return [name for name in PLATFORM_REGISTRY if config.get(name, {}).get("enabled")]
 
 
-def _publish_assets(assets, platform_names, config, logger, dry_run, state=None, key=None):
-    """Publish *assets* to *platform_names*. Returns exit code (0 = all ok)."""
+def _summary_lines(results):
+    """Render *results* (platform, outcome) as markdown bullets.
+
+    An outcome of None means the publish failed. The reason is deliberately left
+    out: the summary is posted to a public issue, and an exception message can
+    carry the request URL, which carries the access token as a query parameter.
+    """
+    return [
+        f"- \u2705 {name} \u2014 {outcome}" if outcome
+        else f"- \u274c {name} \u2014 publish failed (see the job log)"
+        for name, outcome in results
+    ]
+
+
+def _print_summary(summary):
+    """Print the run summary as markdown on stdout, for the caller to forward."""
+    if summary:
+        print("\n".join(["## Audiogram publishing", *summary]))
+
+
+def _publish_assets(assets, platform_names, config, logger, dry_run, state=None, key=None, summary=None):
+    """Publish *assets* to *platform_names*. Returns exit code (0 = all ok).
+
+    When *summary* is a list, one markdown section per soundbite is appended to
+    it, so the caller can print the whole run at the end.
+    """
     if assets.caption_file:
         caption = parse_caption_file(assets.caption_file)
     else:
@@ -54,6 +78,7 @@ def _publish_assets(assets, platform_names, config, logger, dry_run, state=None,
         return 0
 
     exit_code = 0
+    results = []
     for name in platform_names:
         if name not in PLATFORM_REGISTRY:
             logger.warning("Unknown platform '%s', skipping.", name)
@@ -65,6 +90,7 @@ def _publish_assets(assets, platform_names, config, logger, dry_run, state=None,
         platform = PLATFORM_REGISTRY[name](platform_config)
         if not platform.is_configured():
             logger.error("Platform '%s' is not properly configured, skipping.", name)
+            results.append((name, None))
             exit_code = 1
             continue
         try:
@@ -79,11 +105,17 @@ def _publish_assets(assets, platform_names, config, logger, dry_run, state=None,
             else:
                 result = platform.publish(assets.video_vertical, caption)
             logger.info("[%s] Published: %s", name, result)
+            results.append((name, result))
             if state and key:
                 state.mark_published(name, key)
         except Exception as exc:
             logger.error("[%s] Publish failed: %s", name, exc)
+            results.append((name, None))
             exit_code = 1
+
+    if summary is not None and results:
+        summary.append(f"### {key or assets.folder}")
+        summary.extend(_summary_lines(results))
     return exit_code
 
 
@@ -252,11 +284,14 @@ def main(argv=None):
             sys.exit(0)
 
         exit_code = 0
+        summary = []
         for key, (assets, pending_platforms) in targets.items():
             logger.info("Next unpublished soundbite: %s (pending: %s)", key, pending_platforms)
             exit_code |= _publish_assets(
-                assets, pending_platforms, config, logger, args.dry_run, state=state, key=key
+                assets, pending_platforms, config, logger, args.dry_run,
+                state=state, key=key, summary=summary,
             )
+        _print_summary(summary)
         sys.exit(exit_code)
 
     # ---------------------------------------------------------------- manual mode
@@ -269,6 +304,7 @@ def main(argv=None):
     logger.info("Found %d soundbite(s) to publish.", len(all_assets))
 
     exit_code = 0
+    summary = []
     for assets in all_assets:
         logger.info("--- Processing: %s ---", assets.folder)
         try:
@@ -276,8 +312,12 @@ def main(argv=None):
         except ValueError:
             key = None
             logger.debug("Soundbite %s is outside input_dir; state will not be tracked.", assets.folder)
-        exit_code |= _publish_assets(assets, platform_names, config, logger, args.dry_run, state=state, key=key)
+        exit_code |= _publish_assets(
+            assets, platform_names, config, logger, args.dry_run,
+            state=state, key=key, summary=summary,
+        )
 
+    _print_summary(summary)
     sys.exit(exit_code)
 
 

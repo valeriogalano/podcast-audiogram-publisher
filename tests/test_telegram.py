@@ -7,6 +7,7 @@ from publisher.platforms.telegram import (
     _use_story,
     _build_message_caption,
     _is_peer_published,
+    _message_link,
     _mark_peer_published,
     _peer_state_platform,
     _peers_for,
@@ -117,3 +118,14 @@ class TestPeerState:
         assert _is_peer_published(state, key, "telegram", "me") is True
         assert _is_peer_published(state, key, "telegram", "@other") is False
         assert state.is_published("telegram", key) is False
+
+
+class TestMessageLink:
+    """A message to a public channel has a t.me URL; other peers do not."""
+
+    def test_username_peer_becomes_a_url(self):
+        assert _message_link("@mychannel", 42) == "https://t.me/mychannel/42"
+
+    def test_other_peers_keep_the_descriptor(self):
+        assert _message_link("me", 42) == "telegram:message:me"
+        assert _message_link(-1001234567890, 42) == "telegram:message:-1001234567890"
