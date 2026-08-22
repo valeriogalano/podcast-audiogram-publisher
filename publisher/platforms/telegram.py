@@ -77,6 +77,18 @@ def _build_message_caption(caption: Caption, link_text: str = DEFAULT_LINK_TEXT)
     return "\n\n".join(parts)
 
 
+def _message_link(peer: object, msg_id: int) -> str:
+    """Public t.me link of a posted message, when the peer has one.
+
+    Only an @username peer has a shareable URL. A numeric id, "me" or a private
+    channel would need the t.me/c/<internal-id>/<msg-id> form, which is only
+    clickable by who is already a member: not worth building.
+    """
+    if isinstance(peer, str) and peer.startswith("@"):
+        return f"https://t.me/{peer[1:]}/{msg_id}"
+    return f"telegram:message:{peer}"
+
+
 def _peer_state_platform(platform_name: str, peer: object) -> str:
     return f"{platform_name}:peer:{peer}"
 
@@ -228,13 +240,13 @@ class TelegramPlatform(BasePlatform):
                         results.append(f"telegram:message:skipped:{peer}")
                         continue
                     logger.info("Sending Telegram video message to peer '%s'...", peer)
-                    await client.send_file(
+                    message = await client.send_file(
                         peer, str(video_path),
                         caption=message_caption,
                         parse_mode="html",
                         supports_streaming=True,
                     )
-                    results.append(f"telegram:message:{peer}")
+                    results.append(_message_link(peer, message.id))
                     _mark_peer_published(state, key, platform_name, peer)
                     logger.info("Telegram video message posted to '%s'.", peer)
 

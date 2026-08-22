@@ -93,7 +93,7 @@ class TestLinkedInPublish:
              patch("publisher.platforms.linkedin.requests.get", return_value=status_resp):
             result = platform.publish(video, _caption())
 
-        assert result == "linkedin:post:POST1"
+        assert result == "https://www.linkedin.com/feed/update/POST1"
 
     def test_publish_raises_on_processing_failed(self, tmp_path):
         video = tmp_path / "video.mp4"

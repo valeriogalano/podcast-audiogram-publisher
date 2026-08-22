@@ -153,3 +153,50 @@ class TestAutoModeLimit:
         data = json.loads(state_file.read_text())
         assert "ep01/sb2" in data["youtube"]
         assert "telegram" not in data
+
+
+class TestRunSummary:
+    """The run prints a markdown summary on stdout for the caller to forward."""
+
+    def _setup(self, tmp_path):
+        output_dir = tmp_path / "output"
+        state_file = tmp_path / "published.json"
+        config_file = _make_config(tmp_path, output_dir, state_file)
+        _make_soundbite(output_dir, "ep01", "sb1")
+        return ["--config", str(config_file), "--state-file", str(state_file)]
+
+    def test_published_url_is_listed(self, tmp_path, capsys):
+        argv = self._setup(tmp_path)
+        platform = _mock_platform()
+        platform.return_value.publish.return_value = "https://youtu.be/abc"
+
+        with patch.dict("publisher.cli.PLATFORM_REGISTRY", {"youtube": platform}), \
+             pytest.raises(SystemExit):
+            main(argv)
+
+        out = capsys.readouterr().out
+        assert "## Audiogram publishing" in out
+        assert "ep01/sb1" in out
+        assert "- ✅ youtube — https://youtu.be/abc" in out
+
+    def test_failure_is_listed_without_the_exception_text(self, tmp_path, capsys):
+        argv = self._setup(tmp_path)
+        platform = _mock_platform(publish_side_effect=RuntimeError("token=SECRET123"))
+
+        with patch.dict("publisher.cli.PLATFORM_REGISTRY", {"youtube": platform}), \
+             pytest.raises(SystemExit):
+            main(argv)
+
+        out = capsys.readouterr().out
+        assert "- ❌ youtube" in out
+        assert "SECRET123" not in out
+
+    def test_dry_run_prints_no_summary(self, tmp_path, capsys):
+        argv = self._setup(tmp_path) + ["--dry-run"]
+        platform = _mock_platform()
+
+        with patch.dict("publisher.cli.PLATFORM_REGISTRY", {"youtube": platform}), \
+             pytest.raises(SystemExit):
+            main(argv)
+
+        assert "## Audiogram publishing" not in capsys.readouterr().out

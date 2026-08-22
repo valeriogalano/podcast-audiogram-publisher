@@ -157,4 +157,6 @@ class LinkedInPlatform(BasePlatform):
         post_resp.raise_for_status()
         post_id = post_resp.headers.get("x-restli-id", post_resp.headers.get("X-RestLi-Id", "unknown"))
         logger.info("LinkedIn post published: %s", post_id)
-        return f"linkedin:post:{post_id}"
+        if post_id == "unknown":
+            return "linkedin:post:unknown"
+        return f"https://www.linkedin.com/feed/update/{post_id}"

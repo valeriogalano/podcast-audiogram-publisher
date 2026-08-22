@@ -85,6 +85,23 @@ python -m publisher --config /path/to/config.yaml --state-file /path/to/publishe
 | `--log-file PATH` | *(stderr only)* | Append logs to this file; rotates daily, keeps 7 days |
 | `--state-file PATH` | `state_file` in config | JSON file tracking published soundbites |
 
+### Run summary
+
+At the end of a run (not in `--dry-run`) the tool prints a markdown summary on
+**stdout**, one section per soundbite and one bullet per platform, with the
+permalink of each published post. Logs stay on stderr, so the summary can be
+piped straight into a notification: for example
+`python -m publisher | tee summary.md`, then posted as a comment on a GitHub
+issue by the workflow in `podcast-audiogram-automation`.
+
+A failed platform is listed as a failure and nothing more: the reason stays in
+the log. Exception messages can carry the request URL, and the access token
+travels in the query string, so they must never reach a public issue.
+
+Not every platform returns a URL. YouTube, Instagram, Mastodon, LinkedIn and
+Telegram messages sent to an `@username` channel do; Telegram stories have no
+URL at all, and TikTok returns a `publish_id` that is not the video id.
+
 ---
 
 ## Auto mode (cron-friendly)
