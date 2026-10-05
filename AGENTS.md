@@ -17,9 +17,9 @@ platforms.
 documentation, matching the existing README and history. Conversation with the maintainer
 stays in Italian.
 
-This matters because the sibling repositories differ: `podcast-audiogram-generator` is also
-English, while the orchestrator `podcast-audiogram-automation` is in Italian. Check the target
-repository before writing a commit — do not carry a convention across from another repo.
+The sibling repositories follow the same rule: `podcast-audiogram-generator` and the
+orchestrator `podcast-audiogram-automation`. The orchestrator's README and older history are in
+Italian, but new commits and PRs there are in English too.
 
 ## Stack
 
