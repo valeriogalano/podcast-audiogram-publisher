@@ -13,4 +13,4 @@ telethon>=1.34.0,<2
 Mastodon.py>=1.8.0,<2
 
 # Config
-pyyaml>=6.0,<7
+pyyaml>=6.0.3,<7
