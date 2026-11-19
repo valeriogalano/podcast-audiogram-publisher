@@ -1,7 +1,7 @@
 # YouTube
 google-api-python-client>=2.100.0,<3
 google-auth-oauthlib>=1.1.0,<2
-google-auth-httplib2>=0.1.0,<1
+google-auth-httplib2>=0.4.4,<1
 
 # All HTTP calls (Instagram, TikTok)
 requests>=2.31.0,<3
